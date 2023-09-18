@@ -1,0 +1,267 @@
+
+Description: Webapp Infrastructure
+Parameters:
+  VpcCidrBlock:
+    Description: "CIDR block for VPC"
+    Type: String
+    Default: "190.160.0.0/16"
+  
+  Subnet1CIDR:
+    Description: "CIDR block for Subnet 1"
+    Type: String
+    Default: "190.160.1.0/24"
+
+  Subnet2CIDR:
+    Description: "CIDR block for Subnet 2"
+    Type: String
+    Default: "190.160.2.0/24"
+
+  Subnet3CIDR:
+    Description: "CIDR block for Subnet 3"
+    Type: String
+    Default: "190.160.3.0/24"
+
+  PrivateSubnet1CIDR:
+      Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+      Type: String
+      Default: "190.160.20.0/24"
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: "190.160.21.0/24"
+
+  PrivateSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: "190.160.22.0/24"
+
+  PublicRouteCIDR:
+    Description: "CIDR block for Public Route"
+    Type: String
+    Default: "0.0.0.0/0"
+  Zone1:
+    Description: "Zone Selection"
+    Type: Number
+    Default: 0
+  Zone2:
+    Description: "Zone Selection"
+    Type: Number
+    Default: 1
+  Zone3:
+    Description: "Zone Selection"
+    Type: Number
+    Default: 2
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: 'default'
+      Tags:
+        - Key: Name
+          Value:  
+            Fn::Sub: "${AWS::StackName}-Vpc"
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: 
+            Fn::Sub: "${AWS::StackName}-InternetGateway"
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref myVPC
+
+  mySubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: !Ref Subnet1CIDR
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ !Ref Zone1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: 
+            Fn::Sub: "${AWS::StackName}-mySubnet-1"
+  mySubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: !Ref Subnet2CIDR
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ !Ref Zone2, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: 
+            Fn::Sub: "${AWS::StackName}-mySubnet-2"
+  mySubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: !Ref Subnet3CIDR
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ !Ref Zone3, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: 
+            Fn::Sub: "${AWS::StackName}-mySubnet-3"
+
+  PrivateSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref myVPC
+        AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+        CidrBlock: !Ref PrivateSubnet1CIDR
+        MapPublicIpOnLaunch: false
+        Tags:
+          - Key: Name
+            Value: 
+              Fn::Sub: "${AWS::StackName}-myPrivateSubnet-1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: 
+            Fn::Sub: "${AWS::StackName}-myPrivateSubnet-2"
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: 
+            Fn::Sub: "${AWS::StackName}-myPrivateSubnet-3"
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: 
+            Fn::Sub: "${AWS::StackName}-RouteTable"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: !Ref PublicRouteCIDR
+      GatewayId: !Ref InternetGateway
+
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref mySubnet1
+
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref mySubnet2
+
+  Subnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref mySubnet3
+
+  PrivateRouteTable1:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref myVPC
+        Tags:
+          - Key: Name
+            Value: !Ref AWS::StackName
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet2
+
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet3
+
+Outputs:
+  myVPC:
+      Description: Vpc Id
+      Value:
+        Ref: myVPC
+      Export:
+        Name:
+          Fn::Sub: "${AWS::StackName}-myVPC"
+
+  mySubnet1:
+      Description: Subnet-1 Id
+      Value:
+        Ref: mySubnet1
+      Export:
+        Name:
+          Fn::Sub: "${AWS::StackName}-mySubnet1"
+  mySubnet2:
+    Description: Subnet-2 Id
+    Value:
+      Ref: mySubnet2
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-mySubnet2"
+  mySubnet3:
+    Description: Subnet-3 Id
+    Value:
+      Ref: mySubnet3
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-mySubnet3"
+  PrivateSubnet1:
+      Description: PrivateSubnet-1 Id
+      Value:
+        Ref: PrivateSubnet1
+      Export:
+        Name:
+          Fn::Sub: "${AWS::StackName}-PrivateSubnet1"
+  PrivateSubnet2:
+    Description: PrivateSubnet-2 Id
+    Value:
+      Ref: PrivateSubnet2
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-PrivateSubnet2"
+  PrivateSubnet3:
+    Description: PrivateSubnet-3 Id
+    Value:
+      Ref: PrivateSubnet3
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-PrivateSubnet3"
+    
